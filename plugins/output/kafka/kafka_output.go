@@ -55,7 +55,7 @@ type KafkaStatistics struct {
 	EventSentCount    int64 `json:"event_sent_count"`
 }
 
-func NewKafkaOutputFromCfg(cfg map[string]interface{}) (KafkaOutput, error) {
+func NewKafkaOutputFromCfg(cfg map[interface{}]interface{}, encoder encoder.Encoder) (KafkaOutput, error) {
 	ko := KafkaOutput{}
 
 	log.Infof("Trying to create kafka output with plugin section: %s", cfg)
@@ -70,7 +70,7 @@ func NewKafkaOutputFromCfg(cfg map[string]interface{}) (KafkaOutput, error) {
 		if topicsuffix, ok := topicsuffix.(string); ok {
 			ko.topicSuffix = topicsuffix
 		} else {
-			ko.brokers = ""
+			ko.topicSuffix = ""
 		}
 	}
 
@@ -114,15 +114,18 @@ func NewKafkaOutputFromCfg(cfg map[string]interface{}) (KafkaOutput, error) {
 	ko.Producer = producer
 
 	ko.deliveryChannel = make(chan kafka.Event)
+
+	ko.Encoder = encoder
+
 	return ko, nil
 }
 
 func (o *KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<- error, controlchan <-chan os.Signal, wg sync.WaitGroup) error {
-	stoppubchan := make(chan struct{}, 1)
-	var mypubwg sync.WaitGroup
+	//This is in its own goroutine to provide the possibility of running multiple producers in their
 	go func() {
-		mypubwg.Add(1)
-		defer mypubwg.Done()
+		refreshTicker := time.NewTicker(1 * time.Second)
+		defer refreshTicker.Stop()
+		defer wg.Done()
 		for {
 			select {
 			case message := <-messages:
@@ -138,18 +141,6 @@ func (o *KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<
 				} else {
 					errorChan <- err
 				}
-			case <-stoppubchan:
-				log.Info("stop request received ending publishing goroutine")
-				return
-			}
-		}
-	}()
-	go func() {
-		refreshTicker := time.NewTicker(1 * time.Second)
-		defer refreshTicker.Stop()
-		defer wg.Done()
-		for {
-			select {
 			case e := <-o.deliveryChannel:
 				m := e.(*kafka.Message)
 				if m.TopicPartition.Error != nil {
@@ -166,8 +157,6 @@ func (o *KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<
 				case syscall.SIGTERM, syscall.SIGINT:
 					// handle exit gracefully
 					log.Info("Received SIGTERM. Exiting")
-					stoppubchan <- struct{}{}
-					mypubwg.Wait()
 					return
 				}
 			}
@@ -197,8 +186,9 @@ func (o *KafkaOutput) Key() string {
 }
 
 func (o *KafkaOutput) output(topic string, m string) {
-	//log.Infof("output got a message ")
+
 	err := errors.New("")
+	//IF we hit the kernel buffer limit, flush and keep going
 	for err != nil {
 		err = o.Producer.Produce(&kafka.Message{
 			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
@@ -211,7 +201,7 @@ func (o *KafkaOutput) output(topic string, m string) {
 	}
 }
 
-func GetOutputHandler(cfg map[string]interface{}) (output.OutputHandler, error) {
-	ko, err := NewKafkaOutputFromCfg(cfg)
+func GetOutputHandler(cfg map[interface{}]interface{}, encoder encoder.Encoder) (output.OutputHandler, error) {
+	ko, err := NewKafkaOutputFromCfg(cfg, encoder)
 	return &ko, err
 }

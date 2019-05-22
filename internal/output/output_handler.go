@@ -254,8 +254,6 @@ func GetOutputsFromCfg(cfg []interface{}) ([]OutputHandler, error) {
 							}
 
 						}
-					} else {
-						log.Panicf("Coudln't create Bundled Output for plugin %s")
 					}
 					ohp, _ := loadOutputFromPlugin(path, name, cfg, myencoder)
 					tempOH = ohp

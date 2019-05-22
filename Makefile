@@ -30,7 +30,7 @@ build-plugins: librdkafka
 	cp plugins/encoder/basic/basic_encoder.so basic_encoder.so
 	cp plugins/filter/basic/basic_filter.so basic_filter.so
 
-build: librdkafka
+build: librdkafka 
 	go get -u github.com/gogo/protobuf/protoc-gen-gogofast
 	protoc --gogofast_out=.  ./internal/sensor_events/sensor_events.proto
 	go build ./cmd/cb-event-forwarder

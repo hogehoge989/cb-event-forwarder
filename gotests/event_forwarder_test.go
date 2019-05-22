@@ -138,7 +138,8 @@ func TestHttpOutputReal(t *testing.T) {
 	}
 	processTestEventsWithRealForwarder(t, conf, outputDir, &background, &shutdown)
 }
-/* Need to expose way to DI the mocks3 to s3 behavior
+
+/* Need to expose way to inject the mocks3 to s3 behavior
 func TestS3OutputReal(t * testing.T) {
 	mocks3 := new(MockS3)
 	outputDir := "../test_output/real_output_s3_real"
