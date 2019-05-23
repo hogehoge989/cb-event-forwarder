@@ -1,8 +1,8 @@
 #GIT_VERSION := $(shell git describe --tags)
 #VERSION := $(shell cat VERSION)
 
-GIT_VERSION := 3.6 
-VERSION := 3.6 
+GIT_VERSION := 3.6
+VERSION := 3.6
 GO_PREFIX := github.com/carbonblack/cb-event-forwarder
 TARGET_OS=linux
 PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/lib/pkgconfig/:`find rdkafka.pc 2>/dev/null`
@@ -20,23 +20,23 @@ endif
 go-fmt:
 	go fmt github.com/carbonblack/cb-event-forwarder/...
 
-build-plugins: librdkafka 
-	go build -buildmode=plugin -tags static -o plugins/output/kafka/kafka_output.so plugins/output/kafka/kafka_output.go     
-	go build -buildmode=plugin -o plugins/encoder/basic/basic_encoder.so plugins/encoder/basic/basic_encoder.go     
-	go build -buildmode=plugin -o plugins/filter/basic/basic_filter.so plugins/filter/basic/basic_filter.go     
-	go build -buildmode=plugin -o plugins/output/hdfs/hdfs_output.so plugins/output/hdfs/hdfs_output.go     
+build-plugins: librdkafka
+	go build -buildmode=plugin -tags static -o plugins/output/kafka/kafka_output.so plugins/output/kafka/kafka_output.go
+	go build -buildmode=plugin -o plugins/encoder/basic/basic_encoder.so plugins/encoder/basic/basic_encoder.go
+	go build -buildmode=plugin -o plugins/filter/basic/basic_filter.so plugins/filter/basic/basic_filter.go
+	go build -buildmode=plugin -o plugins/output/hdfs/hdfs_output.so plugins/output/hdfs/hdfs_output.go
 	cp plugins/output/kafka/kafka_output.so .
 	cp plugins/output/hdfs/hdfs_output.so .
 	cp plugins/encoder/basic/basic_encoder.so basic_encoder.so
 	cp plugins/filter/basic/basic_filter.so basic_filter.so
 
-build: librdkafka 
+build: librdkafka
 	go get -u github.com/gogo/protobuf/protoc-gen-gogofast
 	protoc --gogofast_out=.  ./internal/sensor_events/sensor_events.proto
 	go build ./cmd/cb-event-forwarder
 
 rpmbuild:
-	protoc --gogofast_out=.  ./internal/sensor_events/sensor_events.proto 
+	protoc --gogofast_out=.  ./internal/sensor_events/sensor_events.proto
 	go build -ldflags "-X main.version=${VERSION}" ./cmd/cb-event-forwarder
 
 rpminstall:
@@ -56,7 +56,7 @@ test:
 	mkdir -p test_output
 	mkdir test_output/gold_output
 	python test/scripts/process_events_python.py test/raw_data test_output/gold_output
-	cd gotests ; go test ; cd .. 
+	cd gotests ; go test ; cd ..
 	PYTHONIOENCODING=utf8 python test/scripts/compare_outputs.py test_output/gold_output test_output/go_output > test_output/output.txt
 
 clean: go-fmt
