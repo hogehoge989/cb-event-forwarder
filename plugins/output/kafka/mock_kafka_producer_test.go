@@ -26,6 +26,7 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"errors"
 )
 
 var jsmp jsonmessageprocessor.JsonMessageProcessor = jsonmessageprocessor.JsonMessageProcessor{}
@@ -107,6 +108,28 @@ func (mp *MockedProducer) OffsetsForTimes(times []kafka.TopicPartition, timeoutM
 
 type outputMessageFunc func([]map[string]interface{}) (string, error)
 
+func TestKafkaProducer(t *testing.T) {
+	Producer, _ := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": "localhost:9092"})
+
+	topic := "test"
+
+	data := make([] byte, 1000)
+
+	for true {
+		var err error = errors.New("Didn't produce yet")
+		for err != nil {
+			err = Producer.Produce(&kafka.Message{
+				TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+				Value:          data,
+			}, nil)
+			if err != nil {
+				log.Debugf("got error at production...flushing")
+				Producer.Flush(1)
+			}
+		}
+	}
+}
+
 func TestKafkaOutput(t *testing.T) {
 	// create an instance of our test object
 
@@ -114,15 +137,15 @@ func TestKafkaOutput(t *testing.T) {
 	outputDir := "../../../test_output/real_output_kafka"
 	os.MkdirAll(outputDir, 0755)
 
-	outputFile, err := os.Create(path.Join(outputDir, "/kafkaoutput")) // For read access.
+	/*outputFile, err := os.Create(path.Join(outputDir, "/kafkaoutput")) // For read access.
 	if err != nil {
 		t.Errorf("Coudln't open httpoutput file %v", err)
 		t.FailNow()
 		return
 	}
 	mockProducer := new(MockedProducer)
-	mockProducer.outfile = outputFile
-	//producer, _ := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": "localhost:9092"})
+	mockProducer.outfile = outputFile*/
+	mockProducer, _ := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": "localhost:9092"})
 	testEncoder := encoder.NewJSONEncoder()
 	var outputHandler output.OutputHandler = &KafkaOutput{Producer: mockProducer, Encoder: &testEncoder, deliveryChannel: make(chan kafka.Event)}
 
@@ -154,7 +177,7 @@ func TestKafkaOutputReal(t *testing.T) {
 }
 
 func processTestEventsWithRealHandler(t *testing.T, outputDir string, outputFunc outputMessageFunc, oh output.OutputHandler) {
-	t.Logf("Tring to preform test with %v %s", oh, oh)
+	t.Logf("Tring to perform test with %v %s", oh, oh)
 
 	/*formats := [...]struct {
 		formatType string
@@ -167,7 +190,7 @@ func processTestEventsWithRealHandler(t *testing.T, outputDir string, outputFunc
 		process    func(string, []byte) ([]map[string]interface{}, error)
 	}{{"protobuf", pbmp.ProcessProtobuf}}
 
-	messages := make(chan map[string]interface{}, 100)
+	messages := make(chan map[string]interface{})
 	errors := make(chan error)
 	controlchan := make(chan os.Signal, 5)
 	var wg sync.WaitGroup
@@ -269,7 +292,7 @@ func processTestEventsWithRealForwarder(t *testing.T, conf map[string]interface{
 
 	t.Logf("Background running...continue to test...")
 
-	formats := [2]string{"json", "protobuf"}
+	formats := []string{"protobuf"}
 
 	sigs := make(chan os.Signal)
 
@@ -283,90 +306,93 @@ func processTestEventsWithRealForwarder(t *testing.T, conf map[string]interface{
 
 	go cbef.Go(sigs, nil)
 
-	for _, format := range formats {
+	for true {
 
-		pathname := path.Join("../../../test/raw_data", format)
-		fp, err := os.Open(pathname)
+		for _, format := range formats {
 
-		if err != nil {
-			t.Logf("Could not open %s", pathname)
-			t.FailNow()
-		}
+			pathname := path.Join("../../../test/raw_data", format)
+			fp, err := os.Open(pathname)
 
-		infos, err := fp.Readdir(0)
-		if err != nil {
-			t.Logf("Could not enumerate directory %s", pathname)
-			t.FailNow()
-		}
-
-		fp.Close()
-
-		for _, info := range infos {
-			if !info.IsDir() {
-				continue
-			}
-
-			routingKey := info.Name()
-			os.MkdirAll(outputDir, 0755)
-
-			// process all files inside this directory
-			routingDir := path.Join(pathname, info.Name())
-			fp, err := os.Open(routingDir)
 			if err != nil {
-				t.Logf("Could not open directory %s", routingDir)
+				t.Logf("Could not open %s", pathname)
 				t.FailNow()
 			}
 
-			files, err := fp.Readdir(0)
+			infos, err := fp.Readdir(0)
 			if err != nil {
-				t.Errorf("Could not enumerate directory %s; continuing", routingDir)
-				continue
+				t.Logf("Could not enumerate directory %s", pathname)
+				t.FailNow()
 			}
 
 			fp.Close()
 
-			for _, fn := range files {
-				if fn.IsDir() {
+			for _, info := range infos {
+				if !info.IsDir() {
 					continue
 				}
 
-				fp, err := os.Open(path.Join(routingDir, fn.Name()))
+				routingKey := info.Name()
+				os.MkdirAll(outputDir, 0755)
+
+				// process all files inside this directory
+				routingDir := path.Join(pathname, info.Name())
+				fp, err := os.Open(routingDir)
 				if err != nil {
-					t.Errorf("Could not open %s for reading", path.Join(routingDir, fn.Name()))
-					continue
+					t.Logf("Could not open directory %s", routingDir)
+					t.FailNow()
 				}
-				b, err := ioutil.ReadAll(fp)
+
+				files, err := fp.Readdir(0)
 				if err != nil {
-					t.Errorf("Could not read %s", path.Join(routingDir, fn.Name()))
+					t.Errorf("Could not enumerate directory %s; continuing", routingDir)
 					continue
 				}
 
 				fp.Close()
 
-				exchange := "api.events"
-				contentType := "application/json"
-				if format == "json" {
-					exchange = "api.events"
-				}
-				if format == "protobuf" {
-					exchange = "api.rawsensordata"
-					contentType = "application/protobuf"
-				}
-				if err = mockChan.Publish(
-					exchange,   // publish to an exchange
-					routingKey, // routing to 0 or more queues
-					false,      // mandatory
-					false,      // immediate
-					amqp.Publishing{
-						Headers:         amqp.Table{},
-						ContentType:     contentType,
-						ContentEncoding: "",
-						Body:            b,
-						DeliveryMode:    amqp.Transient, // 1=non-persistent, 2=persistent
-						Priority:        0,              // 0-
-					},
-				); err != nil {
-					t.Errorf("Failed to publish %s %s: %s", exchange, routingKey, err)
+				for _, fn := range files {
+					if fn.IsDir() {
+						continue
+					}
+
+					fp, err := os.Open(path.Join(routingDir, fn.Name()))
+					if err != nil {
+						t.Errorf("Could not open %s for reading", path.Join(routingDir, fn.Name()))
+						continue
+					}
+					b, err := ioutil.ReadAll(fp)
+					if err != nil {
+						t.Errorf("Could not read %s", path.Join(routingDir, fn.Name()))
+						continue
+					}
+
+					fp.Close()
+
+					exchange := "api.events"
+					contentType := "application/json"
+					if format == "json" {
+						exchange = "api.events"
+					}
+					if format == "protobuf" {
+						exchange = "api.rawsensordata"
+						contentType = "application/protobuf"
+					}
+					if err = mockChan.Publish(
+						exchange, // publish to an exchange
+						routingKey, // routing to 0 or more queues
+						false, // mandatory
+						false, // immediate
+						amqp.Publishing{
+							Headers:         amqp.Table{},
+							ContentType:     contentType,
+							ContentEncoding: "",
+							Body:            b,
+							DeliveryMode:    amqp.Transient, // 1=non-persistent, 2=persistent
+							Priority:        0, // 0-
+						},
+					); err != nil {
+						t.Errorf("Failed to publish %s %s: %s", exchange, routingKey, err)
+					}
 				}
 			}
 		}

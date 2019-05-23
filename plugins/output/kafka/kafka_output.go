@@ -121,14 +121,16 @@ func NewKafkaOutputFromCfg(cfg map[interface{}]interface{}, encoder encoder.Enco
 }
 
 func (o *KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<- error, controlchan <-chan os.Signal, wg sync.WaitGroup) error {
-	//This is in its own goroutine to provide the possibility of running multiple producers in their
+
+	stoppubchan := make(chan struct{}, 1)
+	var mypubwg sync.WaitGroup
 	go func() {
-		refreshTicker := time.NewTicker(1 * time.Second)
-		defer refreshTicker.Stop()
-		defer wg.Done()
+		mypubwg.Add(1)
+		defer mypubwg.Done()
 		for {
 			select {
 			case message := <-messages:
+				//log.Info("GOT MESSAGE AT GO IN KAFKA")
 				if encodedMsg, err := o.Encoder.Encode(message); err == nil {
 					topic := message["type"]
 					if topicString, ok := topic.(string); ok {
@@ -136,12 +138,26 @@ func (o *KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<
 						topicString += o.topicSuffix
 						o.output(topicString, encodedMsg)
 					} else {
-						log.Info("ERROR: Topic was not a string")
+						log.Errorf("ERROR: Topic was not a string")
 					}
 				} else {
+					//log.Errorf("ERROR IN KAFKA MESSAGE OUT : %v",err)
 					errorChan <- err
 				}
+			case <-stoppubchan:
+				log.Info("stop request received ending publishing goroutine")
+				return
+			}
+		}
+	}()
+	go func() {
+		refreshTicker := time.NewTicker(1 * time.Second)
+		defer refreshTicker.Stop()
+		defer wg.Done()
+		for {
+			select {
 			case e := <-o.deliveryChannel:
+				//log.Info("GOT MESSAGE FROM DELIVERY CHANNEL")
 				m := e.(*kafka.Message)
 				if m.TopicPartition.Error != nil {
 					log.Infof("Delivery failed: %v\n", m.TopicPartition.Error)
@@ -157,6 +173,8 @@ func (o *KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<
 				case syscall.SIGTERM, syscall.SIGINT:
 					// handle exit gracefully
 					log.Info("Received SIGTERM. Exiting")
+					stoppubchan <- struct{}{}
+					mypubwg.Wait()
 					return
 				}
 			}
@@ -165,6 +183,7 @@ func (o *KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<
 
 	return nil
 }
+
 
 func (o *KafkaOutput) Statistics() interface{} {
 	o.RLock()
@@ -189,16 +208,19 @@ func (o *KafkaOutput) output(topic string, m string) {
 
 	err := errors.New("")
 	//IF we hit the kernel buffer limit, flush and keep going
+	//log.Infof("TRING TO PRODUCE TO %s topic ", topic)
 	for err != nil {
 		err = o.Producer.Produce(&kafka.Message{
 			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 			Value:          []byte(m),
 		}, nil)
 		if err != nil {
+			//log.Infof("%v ",err)
 			log.Debugf("got error at production...flushing")
 			o.Producer.Flush(1)
 		}
 	}
+	//log.Infof("Send out production ok")
 }
 
 func GetOutputHandler(cfg map[interface{}]interface{}, encoder encoder.Encoder) (output.OutputHandler, error) {

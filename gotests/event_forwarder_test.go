@@ -70,6 +70,7 @@ func TestNetOutputTCPReal(t *testing.T) {
 				t.Logf("got stop chan event in listner")
 				return
 			default:
+				t.logf("DEFAULT FALL THRU")
 			}
 			buf := make([]byte, 1024)
 			_, err := conn.Read(buf)
@@ -169,7 +170,7 @@ func processTestEventsWithRealForwarder(t *testing.T, conf map[string]interface{
 		go (*backgroundfunc)()
 	}
 
-	t.Logf("Background running...continue to test...")
+
 
 	formats := [2]string{"json", "protobuf"}
 
@@ -273,6 +274,8 @@ func processTestEventsWithRealForwarder(t *testing.T, conf map[string]interface{
 			}
 		}
 	}
+
+
 	t.Logf("Done with test  ")
 
 	if shutdown != nil {
