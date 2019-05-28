@@ -383,8 +383,8 @@ func (pb *PbMessageProcessor) ProcessProtobufMessage(routingKey string, body []b
 		// TODO: not happy about reaching in to the "pb. object for this
 		if pb.CbServerURL != "" {
 
-			outmsg["link_process"] = util.FastStringConcat(
-				pb.CbServerURL, "#analyze/", processGUID, "/1")
+			outmsg["link_process"] = FastStringConcat(
+				config.CbServerURL, "#analyze/", processGUID, "/0")
 
 			outmsg["link_sensor"] = util.FastStringConcat(
 				pb.CbServerURL, "#/host/", strconv.Itoa(int(cbMessage.Env.Endpoint.GetSensorId())))
