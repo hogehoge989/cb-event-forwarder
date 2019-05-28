@@ -21,8 +21,8 @@ func TestFileOutputReal(t *testing.T) {
 	os.MkdirAll(outputDir, 0755)
 	conf := map[string]interface{}{"debug": false,
 		"use_time_float": true,
-		"input":          map[interface{}]interface{}{"cbresponse": map[interface{}]interface{}{"cb_server_url": "https://cbresponseserver", "bind_raw_exchange": true, "rabbit_mq_password": "lol", "rabbit_mq_port": 5672}},
-		"output":         []interface{}{map[interface{}]interface{}{"file": map[interface{}]interface{}{"path": path.Join(outputDir, "realfileout"), "format": map[interface{}]interface{}{"type": "json"}}}},
+		"input":          map[interface{}]interface{}{"cb_server_url": "https://cbresponseserver", "bind_raw_exchange": true, "rabbit_mq_password": "lol", "rabbit_mq_port": 5672},
+		"output":         map[interface{}]interface{}{"file": map[interface{}]interface{}{"path": path.Join(outputDir, "realfileout"), "format": map[interface{}]interface{}{"type": "json"}}},
 	}
 
 	processTestEventsWithRealForwarder(t, conf, outputDir, nil, nil)
@@ -34,8 +34,8 @@ func TestNetOutputTCPReal(t *testing.T) {
 	os.MkdirAll(outputDir, 0755)
 	conf := map[string]interface{}{"debug": false,
 		"use_time_float": true,
-		"input":          map[interface{}]interface{}{"cbresponse": map[interface{}]interface{}{"cb_server_url": "https://cbresponseserver", "bind_raw_exchange": true, "rabbit_mq_password": "lol", "rabbit_mq_port": 5672}},
-		"output":         []interface{}{map[interface{}]interface{}{"socket": map[interface{}]interface{}{"connection": "tcp:127.0.0.1:41337", "format": map[interface{}]interface{}{"type": "json"}}}},
+		"input":          map[interface{}]interface{}{"cb_server_url": "https://cbresponseserver", "bind_raw_exchange": true, "rabbit_mq_password": "lol", "rabbit_mq_port": 5673},
+		"output":         map[interface{}]interface{}{"socket": map[interface{}]interface{}{"connection": "tcp:127.0.0.1:41337", "format": map[interface{}]interface{}{"type": "json"}}},
 	}
 	listener, err := net.Listen("tcp", "127.0.0.1:41337")
 	if err != nil {
@@ -70,7 +70,7 @@ func TestNetOutputTCPReal(t *testing.T) {
 				t.Logf("got stop chan event in listner")
 				return
 			default:
-				t.logf("DEFAULT FALL THRU")
+				t.Logf("DEFAULT FALL THRU")
 			}
 			buf := make([]byte, 1024)
 			_, err := conn.Read(buf)
@@ -134,8 +134,8 @@ func TestHttpOutputReal(t *testing.T) {
 
 	conf := map[string]interface{}{"debug": false,
 		"use_time_float": true,
-		"input":          map[interface{}]interface{}{"cbresponse": map[interface{}]interface{}{"cb_server_url": "https://cbresponseserver", "bind_raw_exchange": true, "rabbit_mq_password": "lol", "rabbit_mq_port": 5672}},
-		"output":         []interface{}{map[interface{}]interface{}{"http": map[interface{}]interface{}{"bundle_directory": "/tmp", "destination": "http://127.0.0.1:51337/", "format": map[interface{}]interface{}{"type": "json"}}}},
+		"input":          map[interface{}]interface{}{"cb_server_url": "https://cbresponseserver", "bind_raw_exchange": true, "rabbit_mq_password": "lol", "rabbit_mq_port": 5672},
+		"output":         map[interface{}]interface{}{"http": map[interface{}]interface{}{"bundle_directory": "/tmp", "destination": "http://127.0.0.1:51337/", "format": map[interface{}]interface{}{"type": "json"}}},
 	}
 	processTestEventsWithRealForwarder(t, conf, outputDir, &background, &shutdown)
 }

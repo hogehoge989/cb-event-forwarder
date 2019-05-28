@@ -21,6 +21,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"runtime"
 )
 
 type AMQPConnection interface {
@@ -195,7 +196,7 @@ func (c *Consumer) Consume() {
 				}
 			}
 
-			numProcessors := 1
+			numProcessors := runtime.NumCPU()
 			log.Infof("Starting %d message processors\n", numProcessors)
 			var wg sync.WaitGroup
 			wg.Add(numProcessors)

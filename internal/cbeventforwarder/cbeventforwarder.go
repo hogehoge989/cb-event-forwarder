@@ -254,7 +254,7 @@ func GetCbEventForwarderFromCfg(config map[string]interface{}, dialer consumer.A
 
 	cbef := CbEventForwarder{Controlchan: outputcontrolchannel, AddToOutput: addToOutput, RemoveFromOutput: removeFromOutput, Name: "cb-event-forwarder", Output: output, Filter: myfilter, OutputErrors: outputE, Result : res, Config: config, Status: Status{ErrorCount: expvar.NewInt("cbef_error_count"), FilteredEventCount: expvar.NewInt("filtered_event_count"), OutputEventCount: expvar.NewInt("output_event_count")}}
 
-	log.Infof("Configurign Cb Event Forwarder %s", cbef.Name)
+	log.Infof("Configuring Cb Event Forwarder %s", cbef.Name)
 	log.Infof("Configured to remove keys: %s", cbef.RemoveFromOutput)
 	log.Infof("Configured to add k-vs to output: %s", cbef.AddToOutput)
 
@@ -340,13 +340,14 @@ func (cbef *CbEventForwarder) Go(sigs chan os.Signal, inputFile *string) {
 				log.Info("cb-event-forwarder signalled to shutdown...beginning shutdown")
 				cbef.TerminateConsumer()
 				//should also be a method something like 'stopOutputs(sig)'
-				log.Debugf("Propogating Signal %s to output control channel", sig)
+				log.Debugf("Signal %s to output control channel", sig)
 				cbef.Controlchan <- sig
-				log.Debugf("cb-event-forwarder waiting for AMQP consumer to be done...")
+				log.Debugf("cb-event-forwarder awaiting consumer exit...")
 				cbef.ConsumerWaitGroup.Wait()
-				log.Debugf("cb-event-forwarder service waiting for output to be done...")
+				log.Debugf("cb-event-forwarder awaiting output exit...")
 				cbef.OutputWaitGroup.Wait()
-				log.Info("Consumer, output finished gracefully - cb-event-forwarder service exiting")
+				log.Debugf("Consumer workers & output finished gracefully - cb-event-forwarder service exiting")
+				log.Debufgf("cb-event-forwarder graceful shutdown done...")
 				return
 			case syscall.SIGHUP: //propgate signals down to the outputs (HUP)
 				log.Debugf("Propogating  HUP signal to output control channel ")
