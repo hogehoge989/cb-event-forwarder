@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"expvar"
 	"flag"
 	"fmt"
@@ -14,7 +13,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 import _ "net/http/pprof"
@@ -26,7 +24,7 @@ var (
 	httpserverport     = flag.Int("httpserverport", 33706, "Enter port for debugging")
 )
 
-var version = "4.0.0 BETA"
+var version = "3.6.0 BETA"
 
 /*
  * Initializations
@@ -98,7 +96,7 @@ func main() {
 	}
 
 	if *checkConfiguration {
-		if err := cbef.StartOutputs(); err != nil {
+		if err := cbef.StartOutput(); err != nil {
 			log.Fatal(err)
 		}
 		os.Exit(0)
@@ -108,7 +106,8 @@ func main() {
 	if *debug {
 		log.Infof("Setting log level to debug")
 		log.SetLevel(log.DebugLevel)
-		http.HandleFunc(fmt.Sprintf("/debug/sendmessage"), func(w http.ResponseWriter, r *http.Request) {
+		 //TODO FIX DEBUG EXPVAR HANDLING HERE
+		 /*http.HandleFunc(fmt.Sprintf("/debug/sendmessage"), func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == "POST" {
 				msg := make([]byte, r.ContentLength)
 				_, err := r.Body.Read(msg)
@@ -142,7 +141,7 @@ func main() {
 
 			errMsg, _ := json.Marshal(map[string]string{"status": "success"})
 			_, _ = w.Write(errMsg)
-		})
+		}) */
 	}
 
 	go http.ListenAndServe(fmt.Sprintf(":%d", *httpserverport), nil)
@@ -153,6 +152,7 @@ func main() {
 	if *inputFile != "" {
 		inputfile = &(*inputFile)
 	}
+
 	cbef.Go(sigs, inputfile)
 
 }
