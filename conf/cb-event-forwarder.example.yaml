@@ -3,59 +3,55 @@
 # whitespace can be used or you can breakout into JSON notation but the strings will need to be double-qouted
 
 input: 
-    cbresponse:
-        cb_server_url: https://cbresponseserver
-        #optional rabbit mq options - if none are specified, /etc/cb//cb.conf
-        #will be used
-        #rabbit_mq_username: cb
-        #rabbit_mq_hostname: localhost
-        #rabbit_mq_password:
-        #bind_raw_exchange: true ( defaults to false )
-        # optional tls for MQ
-        # if ommited no tls will be used
-        #tls stanza defines optional tls parameters for ampqs
-        #tls:
-        #    client_key: client.key
-        #    client_cert: client.crt
-        #    ca_cert: ca.crt
-        #    verify: false
-        # optional explicit event map - by default the
-        # forwarder will attempt to consume all* events
-        # event_map: defines the messages to consume
-        #event_map:
-        #   event_category: 
-        #         - specific_routing_keys
-        #ex)  
-        #...
-        #event_map:
-        #    events_watchlist:
-        #        - watchlist.storage.hit.process
-        #        - watchlist.storage.hit.binary
-        #        - watchlist.hit.binary
-        #        - watchlist.hit.binary
-        # optional post processing for feedhits
-        # has its own TLS section as above
-        #post_processing:
-        #    tls:
-        #        tls_verify: false
-        #    api_token: <CBRTOKEN>
-        #    proxy_url: <proxyurl>
+    cb_server_name: cbresponseserver
+    cb_server_url: https://cbresponseserver
+    #optional rabbit mq options - if none are specified, /etc/cb//cb.conf
+    #will be used
+    #rabbit_mq_username: cb
+    #rabbit_mq_hostname: localhost
+    #rabbit_mq_password:
+    #bind_raw_exchange: true ( defaults to false )
+    # optional tls for MQ
+    # if ommited no tls will be used
+    #tls stanza defines optional tls parameters for ampqs
+    #tls:
+    #    client_key: client.key
+    #    client_cert: client.crt
+    #    ca_cert: ca.crt
+    #    verify: false
+    # optional explicit event map - by default the
+    # forwarder will attempt to consume all* events
+    # event_map: defines the messages to consume
+    #event_map:
+    #   event_category: 
+    #         - specific_routing_keys
+    #ex)  
+    #...
+    #event_map:
+    #    events_watchlist:
+    #        - watchlist.storage.hit.process
+    #        - watchlist.storage.hit.binary
+    #        - watchlist.hit.binary
+    #        - watchlist.hit.binary
+    # optional post processing for feedhits
+    # has its own TLS section as above
+    #post_processing:
+    #    tls:
+    #        tls_verify: false
+    #    api_token: <CBRTOKEN>
+    #    proxy_url: <proxyurl>
 
-# The output stanza defines a list of outputs - each key'd from a type of output
+# The output stanza defines output - each key'd from a type of output
 # and providing an output destination, and format-type
 # the old output_types:
 # file,http,socket,splunk,http,syslog etc are still available and
-# function very similarly to in 3.0
+# function very similarly to in 3.X and earlier
 
 output:
-    - file:
+    file:
         path: "output-json.txt"
         format:
             type: json 
-    - file:
-        path: "output-leef.txt"
-        format:
-            type: leef
 
 # these options are retained from prior versions
 # they are applied to ALL in-flight messages
@@ -92,7 +88,7 @@ output:
 # write a 'functionmap' from go/text/template that will be available
 # the filter at runtime allowing customization
 
-# The output stanza defines a list of outputs - each key'd from a type of output
+# The output stanza defines a output - key'd from a type of output
 # and providing an output destination, and format-type
 # the old output_types:
 # file,http,socket,splunk,http,syslog etc are still available and
@@ -107,7 +103,7 @@ output:
 # corresponding to the cbr message like map[string] interface{}
 # which can be manipulated fairly easily in the templating language provided by go
 # use .Key to acces the value of Key
-# - file:
+# file:
 #    path: "output-template.txt"
 #    format:
 #       type: template
@@ -132,7 +128,7 @@ output:
 #
 # general structure of plugin conf
 #output:
-#    - plugin:
+#    plugin:
 #        path: path/to/the.so
 #        plugin: nameoftheso
 #        config:
