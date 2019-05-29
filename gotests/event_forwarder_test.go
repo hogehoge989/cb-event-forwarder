@@ -3,7 +3,6 @@ package tests
 import (
 	"context"
 	"github.com/carbonblack/cb-event-forwarder/internal/cbeventforwarder"
-	"github.com/carbonblack/cb-event-forwarder/internal/consumer"
 	"github.com/streadway/amqp"
 	"io"
 	"io/ioutil"
@@ -170,17 +169,15 @@ func processTestEventsWithRealForwarder(t *testing.T, conf map[string]interface{
 		go (*backgroundfunc)()
 	}
 
-
-
-	formats := [2]string{"json", "protobuf"}
+	formats := [...]string{"zip"}
 
 	sigs := make(chan os.Signal)
 
-	mockConn := consumer.MockAMQPConnection{AMQPURL: "amqp://cb:lol@localhost:5672"}
+	mockConn := MockAMQPConnection{AMQPURL: "amqp://cb:lol@localhost:5672"}
 
 	mockChan, _ := mockConn.Channel()
 
-	mockDialer := consumer.MockAMQPDialer{Connection: mockConn}
+	mockDialer := MockAMQPDialer{Connection: mockConn}
 
 	cbef := cbeventforwarder.GetCbEventForwarderFromCfg(conf, mockDialer)
 
@@ -189,6 +186,9 @@ func processTestEventsWithRealForwarder(t *testing.T, conf map[string]interface{
 	for _, format := range formats {
 
 		pathname := path.Join("../test/raw_data", format)
+		if format == "zip" {
+			pathname = "../test/stress_rabbit"
+		}
 		fp, err := os.Open(pathname)
 
 		if err != nil {
@@ -214,6 +214,7 @@ func processTestEventsWithRealForwarder(t *testing.T, conf map[string]interface{
 
 			// process all files inside this directory
 			routingDir := path.Join(pathname, info.Name())
+
 			fp, err := os.Open(routingDir)
 			if err != nil {
 				t.Logf("Could not open directory %s", routingDir)
@@ -223,6 +224,7 @@ func processTestEventsWithRealForwarder(t *testing.T, conf map[string]interface{
 			files, err := fp.Readdir(0)
 			if err != nil {
 				t.Errorf("Could not enumerate directory %s; continuing", routingDir)
+				t.FailNow()
 				continue
 			}
 
@@ -250,10 +252,11 @@ func processTestEventsWithRealForwarder(t *testing.T, conf map[string]interface{
 				contentType := "application/json"
 				if format == "json" {
 					exchange = "api.events"
+					contentType = "application/json"
 				}
-				if format == "protobuf" {
+				if format == "zip" {
 					exchange = "api.rawsensordata"
-					contentType = "application/protobuf"
+					contentType = "application/zip"
 				}
 				if err = mockChan.Publish(
 					exchange,   // publish to an exchange
@@ -274,7 +277,6 @@ func processTestEventsWithRealForwarder(t *testing.T, conf map[string]interface{
 			}
 		}
 	}
-
 
 	t.Logf("Done with test  ")
 

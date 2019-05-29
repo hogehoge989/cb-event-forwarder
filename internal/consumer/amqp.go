@@ -30,25 +30,6 @@ type AMQPConnection interface {
 	Channel() (AMQPChannel, error)
 }
 
-type MockAMQPConnection struct {
-	AMQPURL  string
-	AMQPCHAN *MockAMQPChannel
-}
-
-func (mock MockAMQPConnection) Close() error {
-	return nil
-}
-
-func (mock MockAMQPConnection) NotifyClose(receiver chan *amqp.Error) chan *amqp.Error {
-	return receiver
-}
-
-func (mock *MockAMQPConnection) Channel() (AMQPChannel, error) {
-	if mock.AMQPCHAN == nil {
-		mock.AMQPCHAN = &MockAMQPChannel{}
-	}
-	return mock.AMQPCHAN, nil
-}
 
 type AMQPChannel interface {
 	Consume(queue, consumer string, autoAck, exclusive, noLocal, noWait bool, args amqp.Table) (<-chan amqp.Delivery, error)
@@ -58,64 +39,7 @@ type AMQPChannel interface {
 	Publish(exchange, key string, mandatory, immediate bool, msg amqp.Publishing) error
 }
 
-type MockAMQPQueue struct {
-	Name           string
-	Deliveries     chan amqp.Delivery
-	BoundExchanges map[string][]string
-}
 
-type MockAMQPChannel struct {
-	Queues []MockAMQPQueue
-}
-
-func (mock *MockAMQPChannel) Publish(exchange, key string, mandatory, immediate bool, msg amqp.Publishing) error {
-	log.Infof("MOCK AMQP Publish - %s %s", exchange, key)
-
-	for _, queue := range mock.Queues {
-		if _, ok := queue.BoundExchanges[exchange]; ok {
-			log.Infof("amqp.Publishing types: %s ", msg.ContentType)
-			queue.Deliveries <- amqp.Delivery{Exchange: exchange, RoutingKey: key, Body: msg.Body, ContentType: msg.ContentType}
-		}
-	}
-	return nil
-}
-
-func (mock *MockAMQPChannel) QueueDeclare(name string, durable, autoDelete, exclusive, noWait bool, args amqp.Table) (amqp.Queue, error) {
-	mock.Queues = append(mock.Queues, MockAMQPQueue{Deliveries: make(chan amqp.Delivery), Name: name, BoundExchanges: make(map[string][]string, 0)})
-	log.Infof("Created a mock queue")
-	log.Infof("Mock.queues  = %s", mock.Queues)
-	return amqp.Queue{Name: name, Messages: 0, Consumers: 0}, nil
-}
-
-func (mock *MockAMQPChannel) QueueBind(name, key, exchange string, noWait bool, args amqp.Table) error {
-
-	log.Infof("Trying to bind mock queue - %s %s %s", name, key, exchange)
-	for i, queue := range mock.Queues {
-		if queue.Name == name {
-			existingKeys, ok := queue.BoundExchanges[exchange]
-			if ok {
-				mock.Queues[i].BoundExchanges[exchange] = append(existingKeys, key)
-			} else {
-				mock.Queues[i].BoundExchanges[exchange] = []string{key}
-			}
-		}
-	}
-	return nil
-}
-
-func (mock MockAMQPChannel) Cancel(consumer string, noWait bool) error {
-	return nil
-}
-
-func (mock MockAMQPChannel) Consume(queue, consumer string, autoAck, exclusive, noLocal, noWait bool, args amqp.Table) (<-chan amqp.Delivery, error) {
-	for _, q := range mock.Queues {
-		//log.InfoF("Looking for %s , on queue %s",q.Name,queue)
-		if q.Name == queue {
-			return q.Deliveries, nil
-		}
-	}
-	return nil, errors.New("Couldn't find queue by name")
-}
 
 type WrappedAMQPConnection struct {
 	*amqp.Connection
@@ -447,17 +371,7 @@ type AMQPDialer interface {
 	DialTLS(string, *tls.Config) (AMQPConnection, error)
 }
 
-type MockAMQPDialer struct {
-	Connection MockAMQPConnection
-}
 
-func (mdial MockAMQPDialer) Dial(s string) (AMQPConnection, error) {
-	return &mdial.Connection, nil
-}
-
-func (mdial MockAMQPDialer) DialTLS(s string, tlscfg *tls.Config) (AMQPConnection, error) {
-	return &mdial.Connection, nil
-}
 
 type StreadwayAMQPDialer struct {
 }
@@ -701,6 +615,7 @@ func (c *Consumer) processMessage(body []byte, routingKey, contentType string, h
 		msgs, err = c.Pbmp.ProcessRawZipBundle(routingKey, body, headers)
 		if err != nil {
 			reportBundleDetails(routingKey, body, headers, c.DebugFlag, c.DebugStore)
+			log.Debugf("Error in protobuf zip bundle: %v",err)
 			return
 		}
 	} else if contentType == "application/protobuf" {
@@ -713,6 +628,7 @@ func (c *Consumer) processMessage(body []byte, routingKey, contentType string, h
 			if err != nil {
 				reportBundleDetails(routingKey, body, headers, c.DebugFlag, c.DebugStore)
 				c.reportError(routingKey, "Could not process body", err)
+				log.Debugf("Error in application/protobuf processing: %v",err)
 				return
 			} else if msg != nil {
 				msgs = make([]map[string]interface{}, 0, 1)

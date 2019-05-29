@@ -19,7 +19,6 @@ func BenchmarkProtobufEventProcessing(b *testing.B) {
 	}
 }
 
-
 func BenchmarkProtobufEventProcessingString(b *testing.B) {
 	fn := path.Join("../test/raw_data/protobuf/ingress.event.process/0.protobuf")
 	fp, _ := os.Open(fn)
@@ -27,7 +26,7 @@ func BenchmarkProtobufEventProcessingString(b *testing.B) {
 	fakeHeaders := amqp.Table{}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		pbmp.ProcessProtobufMessageString("ingress.event.process", d,fakeHeaders)
+		pbmp.ProcessProtobufMessageString("ingress.event.process", d, fakeHeaders)
 	}
 }
 
@@ -53,7 +52,6 @@ func BenchmarkZipBundleProcessing(b *testing.B) {
 	}
 }
 
-
 func BenchmarkProtobufBundleProcessing(b *testing.B) {
 	fn := path.Join("../test/stress_rabbit/zipbundles/1")
 	fp, _ := os.Open(fn)
@@ -64,7 +62,7 @@ func BenchmarkProtobufBundleProcessing(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, err := pbmp.ProcessProtobufBundle("", d, fakeHeaders)
 		if err != nil {
-			b.Logf("%v",err)
+			b.Logf("%v", err)
 			b.FailNow()
 		}
 	}
