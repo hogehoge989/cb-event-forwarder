@@ -69,7 +69,7 @@ clean: go-fmt
 	rm -rf librdkafka
 
 bench:
-	go test -bench=. ./cmd/cb-event-forwarder/
+	cd gotests ; go test -bench=. ; cd .. 
 
 sdist:
 	mkdir -p build/cb-event-forwarder-${GIT_VERSION}/src/${GO_PREFIX}

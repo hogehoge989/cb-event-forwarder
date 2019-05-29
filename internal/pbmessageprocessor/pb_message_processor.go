@@ -9,6 +9,7 @@ import (
 	"github.com/carbonblack/cb-event-forwarder/internal/sensor_events"
 	"github.com/carbonblack/cb-event-forwarder/internal/util"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/jsonpb"
 	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	"io/ioutil"
@@ -89,12 +90,14 @@ func (pb *PbMessageProcessor) ProcessProtobufBundle(routingKey string, body []by
 	}
 
 	if err != nil && bytesRead < totalLength {
-		err = fmt.Errorf("Error in pb.ProcessProtobufBundle: messages did not fill entire bundle; %d bytes left",
-			totalLength-bytesRead)
+		err = fmt.Errorf("Error in pb.ProcessProtobufBundle: messages did not fill entire bundle; %d bytes left, read %d bytes out of %d bytes - original error = %v",
+			totalLength-bytesRead,bytesRead,totalLength,err)
 	}
 
 	return msgs, err
 }
+
+
 
 func (pb *PbMessageProcessor) ProcessRawZipBundle(routingKey string, body []byte, headers amqp.Table) ([]map[string]interface{}, error) {
 	msgs := make([]map[string]interface{}, 0, 1)
@@ -392,6 +395,22 @@ func (pb *PbMessageProcessor) ProcessProtobufMessage(routingKey string, body []b
 	}
 
 	return outmsg, nil
+}
+
+func (pb *PbMessageProcessor) ProcessProtobufMessageString(routingKey string, body []byte, headers amqp.Table) (string, error) {
+
+	cbMessage := new(sensor_events.CbEventMsg)
+	err := proto.Unmarshal(body, cbMessage)
+	if err != nil {
+		return "", err
+	}
+	var buf bytes.Buffer
+	var marshaler jsonpb.Marshaler = jsonpb.Marshaler{}
+	if err := marshaler.Marshal(&buf, cbMessage); err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
 }
 
 func (pb *PbMessageProcessor) WriteProcessMessage(message *ConvertedCbMessage, kv map[string]interface{}) error {

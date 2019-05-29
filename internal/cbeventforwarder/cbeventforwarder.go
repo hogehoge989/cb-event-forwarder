@@ -75,7 +75,6 @@ func (cbef *CbEventForwarder) OutputMessage(msg map[string]interface{}) error {
 	}
 
 	if keepEvent {
-
 		if len(msg) > 0 && err == nil {
 			cbef.Status.OutputEventCount.Add(1)
 				select {
@@ -188,8 +187,8 @@ func GetCbEventForwarderFromCfg(config map[string]interface{}, dialer consumer.A
 		debugFlag = t.(bool)
 	}
 	if debugFlag {
-		log.Infof("Setting log level to debug")
 		log.SetLevel(log.DebugLevel)
+		log.Debugf("Set log level to debug")
 	}
 
 	debugStore := "/tmp"
@@ -202,7 +201,7 @@ func GetCbEventForwarderFromCfg(config map[string]interface{}, dialer consumer.A
 		useTimeFloat = t.(bool)
 	}
 
-	log.Debugf("Trying to load event forwarder for config: %s", config)
+	log.Debugf("Trying to load event forwarder from config: %s", config)
 
 	outputE := make(chan error)
 
@@ -211,14 +210,20 @@ func GetCbEventForwarderFromCfg(config map[string]interface{}, dialer consumer.A
 
 	if t, ok := config["filter"]; ok {
 		myfilter = filter.GetFilterFromCfg(t.(map[interface{}]interface{}))
+		log.Debugf("Filter created OK")
 	}
 
+
+	cbServerName := "cbresponse"
 	consumerconfig := make(map[interface{}]interface{})
 	if t, ok := config["input"]; ok {
 		consumerconfig = t.(map[interface{}]interface{})
+		if t, ok := consumerconfig["cb_server_name"]; ok {
+			cbServerName = t.(string)
+		}
+	} else {
+		log.Panicf("No input section specified in conf file!")
 	}
-
-	cbServerName := "cbresponse"
 
 	outputconfig := make(map[interface{}] interface{}, 0)
 	if t, ok := config["output"]; ok {
@@ -232,7 +237,7 @@ func GetCbEventForwarderFromCfg(config map[string]interface{}, dialer consumer.A
 	if err != nil {
 		log.Panicf("ERROR PROCESSING OUTPUT CONFIGURATIONS %v", err)
 	} else {
-		log.Infof("Found ouput...%s",output)
+		log.Infof("Detected ouput...%s",output.Key())
 	}
 
 	addToOutput := make(map[string]interface{})
@@ -258,7 +263,7 @@ func GetCbEventForwarderFromCfg(config map[string]interface{}, dialer consumer.A
 	log.Infof("Configured to remove keys: %s", cbef.RemoveFromOutput)
 	log.Infof("Configured to add k-vs to output: %s", cbef.AddToOutput)
 
-	log.Debugf("%s , %s ", cbServerName, consumerconfig)
+	log.Debugf("CONFIG: %s , %s ", cbServerName, consumerconfig)
 
 	cbServerURL := ""
 	if t, ok := consumerconfig["cb_server_url"]; ok {
@@ -285,7 +290,7 @@ func GetCbEventForwarderFromCfg(config map[string]interface{}, dialer consumer.A
 
 	c, err := consumer.NewConsumerFromConf(cbef.OutputMessage, cbServerName, cbServerName, consumerconfig, debugFlag, debugStore, cbef.ConsumerWaitGroup, dialer)
 	if err != nil {
-		log.Panicf("Error consturcting consumer from configuration: %v", err)
+		log.Panicf("Error constructing consumer from configuration: %v", err)
 	}
 
 	eventMap := make(map[string]interface{})
@@ -337,7 +342,7 @@ func (cbef *CbEventForwarder) Go(sigs chan os.Signal, inputFile *string) {
 			switch sig {
 			case syscall.SIGTERM, syscall.SIGINT:
 				//termiante consumers, then outputs
-				log.Info("cb-event-forwarder signalled to shutdown...beginning shutdown")
+				log.Info("cb-event-forwarder beginning shutdown")
 				cbef.TerminateConsumer()
 				//should also be a method something like 'stopOutputs(sig)'
 				log.Debugf("Signal %s to output control channel", sig)
@@ -347,7 +352,7 @@ func (cbef *CbEventForwarder) Go(sigs chan os.Signal, inputFile *string) {
 				log.Debugf("cb-event-forwarder awaiting output exit...")
 				cbef.OutputWaitGroup.Wait()
 				log.Debugf("Consumer workers & output finished gracefully - cb-event-forwarder service exiting")
-				log.Debufgf("cb-event-forwarder graceful shutdown done...")
+				log.Debugf("cb-event-forwarder graceful shutdown done...")
 				return
 			case syscall.SIGHUP: //propgate signals down to the outputs (HUP)
 				log.Debugf("Propogating  HUP signal to output control channel ")

@@ -13,9 +13,21 @@ func BenchmarkProtobufEventProcessing(b *testing.B) {
 	fn := path.Join("../test/raw_data/protobuf/ingress.event.process/0.protobuf")
 	fp, _ := os.Open(fn)
 	d, _ := ioutil.ReadAll(fp)
-
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		pbmp.ProcessProtobuf("ingress.event.process", d)
+	}
+}
+
+
+func BenchmarkProtobufEventProcessingString(b *testing.B) {
+	fn := path.Join("../test/raw_data/protobuf/ingress.event.process/0.protobuf")
+	fp, _ := os.Open(fn)
+	d, _ := ioutil.ReadAll(fp)
+	fakeHeaders := amqp.Table{}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		pbmp.ProcessProtobufMessageString("ingress.event.process", d,fakeHeaders)
 	}
 }
 
@@ -23,7 +35,7 @@ func BenchmarkJsonEventProcessing(b *testing.B) {
 	fn := path.Join("../test/raw_data/json/watchlist.hit.process/0.json")
 	fp, _ := os.Open(fn)
 	d, _ := ioutil.ReadAll(fp)
-
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		jsmp.ProcessJSON("watchlist.hit.process", d)
 	}
@@ -35,9 +47,26 @@ func BenchmarkZipBundleProcessing(b *testing.B) {
 	d, _ := ioutil.ReadAll(fp)
 
 	fakeHeaders := amqp.Table{}
-
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		pbmp.ProcessRawZipBundle("", d, fakeHeaders)
+	}
+}
+
+
+func BenchmarkProtobufBundleProcessing(b *testing.B) {
+	fn := path.Join("../test/stress_rabbit/zipbundles/1")
+	fp, _ := os.Open(fn)
+	d, _ := ioutil.ReadAll(fp)
+
+	fakeHeaders := amqp.Table{}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := pbmp.ProcessProtobufBundle("", d, fakeHeaders)
+		if err != nil {
+			b.Logf("%v",err)
+			b.FailNow()
+		}
 	}
 }
 
