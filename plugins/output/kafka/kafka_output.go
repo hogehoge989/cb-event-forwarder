@@ -122,6 +122,7 @@ func NewKafkaOutputFromCfg(cfg map[interface{}]interface{}, encoder encoder.Enco
 
 func (o *KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<- error, controlchan <-chan os.Signal, wg sync.WaitGroup) error {
 
+	wg.Add(1)
 	stoppubchan := make(chan struct{}, 1)
 	var mypubwg sync.WaitGroup
 	go func() {
@@ -141,7 +142,7 @@ func (o *KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<
 						log.Errorf("ERROR: Topic was not a string")
 					}
 				} else {
-					//log.Errorf("ERROR IN KAFKA MESSAGE OUT : %v",err)
+					log.Errorf("ERROR IN KAFKA MESSAGE OUT : %v",err)
 					errorChan <- err
 				}
 			case <-stoppubchan:

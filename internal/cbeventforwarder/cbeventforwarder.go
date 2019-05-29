@@ -76,13 +76,8 @@ func (cbef *CbEventForwarder) OutputMessage(msg map[string]interface{}) error {
 
 	if keepEvent {
 		if len(msg) > 0 && err == nil {
+			cbef.Result <- msg
 			cbef.Status.OutputEventCount.Add(1)
-				select {
-				case cbef.Result <- msg:
-					log.Debugf("Sent event...")
-				default:
-					log.Debugf("Dropping event for output because channel send failed/timedout... %s", msg)
-				}
 		} else if err != nil {
 			return err
 		}
@@ -258,7 +253,7 @@ func GetCbEventForwarderFromCfg(config map[string]interface{}, dialer consumer.A
 	}
 
 	cbef := CbEventForwarder{Controlchan: outputcontrolchannel, AddToOutput: addToOutput, RemoveFromOutput: removeFromOutput, Name: "cb-event-forwarder", Output: output, Filter: myfilter, OutputErrors: outputE, Result : res, Config: config, Status: Status{ErrorCount: expvar.NewInt("cbef_error_count"), FilteredEventCount: expvar.NewInt("filtered_event_count"), OutputEventCount: expvar.NewInt("output_event_count")}}
-
+	//cbef.OutputWaitGroup.Add(1)
 	log.Infof("Configuring Cb Event Forwarder %s", cbef.Name)
 	log.Infof("Configured to remove keys: %s", cbef.RemoveFromOutput)
 	log.Infof("Configured to add k-vs to output: %s", cbef.AddToOutput)
