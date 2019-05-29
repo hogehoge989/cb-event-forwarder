@@ -448,11 +448,12 @@ func BenchmarkKafkaOutput(b *testing.B) {
 		b.StopTimer()
 		if err != nil {
 			b.Errorf("Failed to publish %s : %s", exchange, err)
-		} else {
+		} /* else {
 			b.Logf("PUBLISHED A MESSAGE!")
-		}
+		}*/
 		b.StartTimer()
 	}
+	b.Logf("DONE BENCHMARKING!")
 }
 
 var mockChan consumer.AMQPChannel
@@ -474,6 +475,23 @@ func TestMain(m *testing.M) {
 	}
 
 	cbef = cbeventforwarder.GetCbEventForwarderFromCfg(conf, mockDialer)
+
+	outputFile, err := os.Create(path.Join("../../../test_output/real_output_kafka_real", "/kafkaoutputmocked")) // For read access.
+
+	if err != nil {
+		//m.Errorf("Coudln't open httpoutput file %v", err)
+		//m.FailNow()
+		return
+	}
+
+	mockProducer := new(MockedProducer)
+	mockProducer.outfile = outputFile
+
+	testEncoder := encoder.NewJSONEncoder()
+
+	var outputHandler output.OutputHandler = &KafkaOutput{Producer: mockProducer, Encoder:  &testEncoder, deliveryChannel: make(chan kafka.Event)}
+
+	cbef.Output = outputHandler
 
 	go cbef.Go(sigs, nil)
 
