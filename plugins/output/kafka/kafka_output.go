@@ -8,12 +8,11 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	log "github.com/sirupsen/logrus"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
-	"time"
-	"runtime"
 )
 
 // Producer implements a High-level Apache Kafka Producer instance ZE 2018
@@ -131,6 +130,7 @@ func (o KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<-
 		go func() {
 			mypubwg.Add(1)
 			defer mypubwg.Done()
+			shouldStop := false
 			for {
 				select {
 				case message := <-messages:
@@ -150,15 +150,22 @@ func (o KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<-
 					}
 				case <-stoppubchan:
 					log.Info("stop request received ending publishing goroutine")
-					return
+					shouldStop = true
+				default:
+					log.Debug("Timeout in kafka output worker go routine select")
+					if shouldStop {
+						log.Debug("Stopping kafka output worker")
+						return
+					} else {
+						log.Debug("Not stopping kafka output worker")
+					}
 				}
 			}
 		}()
 	}
 	go func() {
-		refreshTicker := time.NewTicker(1 * time.Second)
-		defer refreshTicker.Stop()
 		defer wg.Done()
+		defer o.Producer.Close()
 		for {
 			select {
 			case e := <-o.deliveryChannel:
@@ -178,6 +185,7 @@ func (o KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<-
 				case syscall.SIGTERM, syscall.SIGINT:
 					// handle exit gracefully
 					log.Info("Received SIGTERM. Exiting")
+					o.Producer.Flush(5)
 					stoppubchan <- struct{}{}
 					mypubwg.Wait()
 					return
@@ -188,7 +196,6 @@ func (o KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<-
 
 	return nil
 }
-
 
 func (o KafkaOutput) Statistics() interface{} {
 	return KafkaStatistics{DroppedEventCount: o.droppedEventCount, EventSentCount: o.eventSentCount}
