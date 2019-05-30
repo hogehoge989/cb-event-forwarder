@@ -23,11 +23,7 @@ type MockedProducer struct {
 
 func (mp *MockedProducer) Produce(msg *kafka.Message, deliveryChan chan kafka.Event) error {
 	log.Infof("MockProducer::Producer called with %s %v", msg, deliveryChan)
-	topic := "topic"
-	deliveryChan <- &kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
-		Value:          msg.Value,
-	}
+	deliveryChan <- msg
 	mp.outfile.Write(msg.Value)
 	log.Info("MockProducer::Producer returning")
 	return nil

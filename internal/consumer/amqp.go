@@ -2,22 +2,18 @@ package consumer
 
 import (
 	"bytes"
-	"crypto/md5"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"expvar"
 	"fmt"
 	"github.com/carbonblack/cb-event-forwarder/internal/jsonmessageprocessor"
 	"github.com/carbonblack/cb-event-forwarder/internal/pbmessageprocessor"
-	"github.com/carbonblack/cb-event-forwarder/internal/sensor_events"
 	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	"github.com/vaughan0/go-ini"
 	"io/ioutil"
-	"path"
 	"strings"
 	"sync"
 	"time"
@@ -60,12 +56,12 @@ func (wrappedcon WrappedAMQPConnection) Channel() (AMQPChannel, error) {
 
 // TODO: change this into an error channel
 func (c *Consumer) reportError(d string, errmsg string, err error) {
-	//c.status.ErrorCount.Add(1)
-	log.Errorf("%s when processing %s: %s", errmsg, d, err)
+	c.status.ErrorCount.Add(1)
+	//log.Errorf("%s when processing %s: %s", errmsg, d, err)
 }
 
 func reportBundleDetails(routingKey string, body []byte, headers amqp.Table, debugFlag bool, debugStore string) {
-	log.Errorf("Error while processing message through routing key %s:", routingKey)
+	/*log.Errorf("Error while processing message through routing key %s:", routingKey)
 
 	var env *sensor_events.CbEnvironmentMsg
 	env, err := pbmessageprocessor.CreateEnvMessage(headers)
@@ -81,9 +77,6 @@ func reportBundleDetails(routingKey string, body []byte, headers amqp.Table, deb
 		log.Errorf("  %s", hex.Dump(body[0:4]))
 	}
 
-	/*
-	 * We are going to store this bundle in the DebugStore
-	 */
 	if debugFlag {
 		h := md5.New()
 		h.Write(body)
@@ -91,7 +84,7 @@ func reportBundleDetails(routingKey string, body []byte, headers amqp.Table, deb
 		fullFilePath = path.Join(debugStore, fmt.Sprintf("/event-forwarder-%X", h.Sum(nil)))
 		log.Debugf("Writing Bundle to disk: %s", fullFilePath)
 		ioutil.WriteFile(fullFilePath, body, 0444)
-	}
+	}*/
 }
 
 func (c *Consumer) Consume() {
@@ -135,14 +128,14 @@ func (c *Consumer) Consume() {
 					for {
 						select {
 						case d := <-c.deliveries:
-							log.Debugf("AMQP WORKING PROCESSING DELIVERY")
+							//log.Debugf("AMQP WORKING PROCESSING DELIVERY")
 							c.processMessage(d.Body,
 								d.RoutingKey,
 								d.ContentType,
 								d.Headers,
 								d.Exchange)
 						case <-stopchan:
-							log.Info("AMQP Worker exiting")
+							//log.Info("AMQP Worker exiting")
 							return
 						}
 					}

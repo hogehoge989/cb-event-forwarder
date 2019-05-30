@@ -10,10 +10,10 @@ CARBON BLACK 2018 - Zachary Estep - Using this code as the basis for a producer 
 */
 
 import (
-	"github.com/carbonblack/cb-event-forwarder/gotests"
-	"github.com/carbonblack/cb-event-forwarder/internal/cbeventforwarder"
 	"github.com/carbonblack/cb-event-forwarder/internal/encoder"
 	"github.com/carbonblack/cb-event-forwarder/internal/jsonmessageprocessor"
+	"github.com/carbonblack/cb-event-forwarder/gotests"
+	"github.com/carbonblack/cb-event-forwarder/internal/cbeventforwarder"
 	"github.com/carbonblack/cb-event-forwarder/internal/output"
 	"github.com/carbonblack/cb-event-forwarder/internal/pbmessageprocessor"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
@@ -237,7 +237,7 @@ func processTestEventsWithRealForwarder(t *testing.T, conf map[string]interface{
 
 	t.Logf("Background running...continue to test...")
 
-	formats := []string{"zip"}
+	formats := []string{"unzip"}
 
 	sigs := make(chan os.Signal)
 
@@ -251,112 +251,117 @@ func processTestEventsWithRealForwarder(t *testing.T, conf map[string]interface{
 
 	go cbef.Go(sigs, nil)
 
-	for _, format := range formats {
+		for _, format := range formats {
 
-		t.Logf("Trying to use format %s", format)
+			t.Logf("Trying to use format %s", format)
 
-		pathname := path.Join("../../../test/raw_data", format)
-		fp, err := os.Open(pathname)
+			pathname := path.Join("../../../test/raw_data", format)
+			fp, err := os.Open(pathname)
 
-		if err != nil {
-			t.Logf("Could not open %s", pathname)
-			t.FailNow()
-		}
-
-		infos, err := fp.Readdir(0)
-		if err != nil {
-			t.Logf("Could not enumerate directory %s", pathname)
-			t.FailNow()
-		}
-
-		fp.Close()
-
-		t.Logf("Enumerated directory for %s", format)
-
-		for _, info := range infos {
-
-			t.Logf("Info = %s", info)
-
-			if !info.IsDir() {
-				t.Logf("SKIPPING!")
-				continue
-			}
-
-			routingKey := info.Name()
-			if format == "zip" {
-				routingKey = ""
-			}
-			os.MkdirAll(outputDir, 0755)
-
-			// process all files inside this directory
-			routingDir := path.Join(pathname, info.Name())
-			fp, err := os.Open(routingDir)
 			if err != nil {
-				t.Logf("Could not open directory %s", routingDir)
+				t.Logf("Could not open %s", pathname)
 				t.FailNow()
 			}
 
-			files, err := fp.Readdir(0)
+			infos, err := fp.Readdir(0)
 			if err != nil {
-				t.Errorf("Could not enumerate directory %s; continuing", routingDir)
+				t.Logf("Could not enumerate directory %s", pathname)
 				t.FailNow()
-				continue
 			}
 
 			fp.Close()
 
-			for _, fn := range files {
-				log.Infof("Trying to load file %s", fn)
-				if fn.IsDir() {
+			t.Logf("Enumerated directory for %s", format)
+
+			for _, info := range infos {
+
+				t.Logf("Info = %s", info)
+
+				if !info.IsDir() {
+					t.Logf("SKIPPING!")
 					continue
 				}
 
-				fp, err := os.Open(path.Join(routingDir, fn.Name()))
-				if err != nil {
-					t.Errorf("Could not open %s for reading", path.Join(routingDir, fn.Name()))
-					continue
+				routingKey := info.Name()
+				if format == "zip" || format == "unzip" {
+					routingKey = ""
 				}
-				b, err := ioutil.ReadAll(fp)
+				os.MkdirAll(outputDir, 0755)
+
+				// process all files inside this directory
+				routingDir := path.Join(pathname, info.Name())
+				fp, err := os.Open(routingDir)
 				if err != nil {
-					t.Errorf("Could not read %s", path.Join(routingDir, fn.Name()))
+					t.Logf("Could not open directory %s", routingDir)
+					t.FailNow()
+				}
+
+				files, err := fp.Readdir(0)
+				if err != nil {
+					t.Errorf("Could not enumerate directory %s; continuing", routingDir)
+					t.FailNow()
 					continue
 				}
 
 				fp.Close()
 
-				exchange := "api.events"
-				contentType := "application/json"
-				if format == "json" {
-					exchange = "api.events"
-				} else if format == "protobuf" {
-					exchange = "api.rawsensordata"
-					contentType = "application/protobuf"
-				} else if format == "zip" {
-					exchange = "api.rawsensordata"
-					contentType = "application/zip"
-				}
-				err = mockChan.Publish(
-					exchange,   // publish to an exchange
-					routingKey, // routing to 0 or more queues
-					false,      // mandatory
-					false,      // immediate
-					amqp.Publishing{
-						Headers:         amqp.Table{},
-						ContentType:     contentType,
-						ContentEncoding: "",
-						Body:            b,
-						DeliveryMode:    amqp.Transient, // 1=non-persistent, 2=persistent
-						Priority:        0,              // 0-
-					},
-				)
-				if err != nil {
-					t.Errorf("Failed to publish %s %s: %s", exchange, routingKey, err)
-				} else {
-					t.Logf("PUBLISHED A MESSAGE!")
+				for _, fn := range files {
+					log.Infof("Trying to load file %s", fn)
+					if fn.IsDir() {
+						continue
+					}
+
+					fp, err := os.Open(path.Join(routingDir, fn.Name()))
+					if err != nil {
+						t.Errorf("Could not open %s for reading", path.Join(routingDir, fn.Name()))
+						continue
+					}
+					b, err := ioutil.ReadAll(fp)
+					if err != nil {
+						t.Errorf("Could not read %s", path.Join(routingDir, fn.Name()))
+						continue
+					}
+
+					fp.Close()
+
+					exchange := "api.events"
+					contentType := "application/json"
+					if format == "json" {
+						exchange = "api.events"
+					} else if format == "protobuf" {
+						exchange = "api.rawsensordata"
+						contentType = "application/protobuf"
+					} else if format == "zip" {
+						exchange = "api.rawsensordata"
+						contentType = "application/zip"
+					} else if format == "unzip" {
+						exchange = "api.rawsensordata"
+						contentType = "application/protobuf"
+					}
+					for true {
+						err = mockChan.Publish(
+							exchange, // publish to an exchange
+							routingKey, // routing to 0 or more queues
+							false, // mandatory
+							false, // immediate
+							amqp.Publishing{
+								Headers:         amqp.Table{},
+								ContentType:     contentType,
+								ContentEncoding: "",
+								Body:            b,
+								DeliveryMode:    amqp.Transient, // 1=non-persistent, 2=persistent
+								Priority:        0, // 0-
+							},
+						)
+						/*if err != nil {
+							t.Errorf("Failed to publish %s %s: %s", exchange, routingKey, err)
+						} else {
+							t.Logf("PUBLISHED A MESSAGE!")
+						}*/
+					}
 				}
 			}
 		}
-	}
 
 	t.Logf("Done with test")
 

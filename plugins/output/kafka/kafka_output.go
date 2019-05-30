@@ -9,9 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os"
 	"runtime"
-	"strings"
 	"sync"
-	"sync/atomic"
 	"syscall"
 )
 
@@ -46,7 +44,6 @@ type KafkaOutput struct {
 	deliveryChannel   chan kafka.Event
 	droppedEventCount int64
 	eventSentCount    int64
-	sync.RWMutex
 	Encoder encoder.Encoder
 }
 
@@ -127,47 +124,52 @@ func (o KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<-
 	var mypubwg sync.WaitGroup
 	workersNum := runtime.NumCPU()
 	for w := 0; w < workersNum; w++ {
-		go func() {
+		go func(wnum int) {
 			mypubwg.Add(1)
 			defer mypubwg.Done()
 			shouldStop := false
+			//topic := "TESTTOPIC" + string(wnum)
 			for {
 				select {
 				case message := <-messages:
-					log.Info("GOT MESSAGE AT GO IN KAFKA")
+					//log.Info("GOT MESSAGE AT GO IN KAFKA")
 					if encodedMsg, err := o.Encoder.Encode(message); err == nil {
-						topic := message["type"]
-						if topicString, ok := topic.(string); ok {
+						topic := message["type"].(string)
+						//log.Infof("Msg in kafka output is %s",message)
+						/*if topicString, ok := topic.(string); ok {
 							topicString = strings.Replace(topicString, "ingress.event.", "", -1)
 							topicString += o.topicSuffix
 							o.output(topicString, encodedMsg)
 						} else {
 							log.Errorf("ERROR: Topic was not a string")
-						}
-					} else {
-						log.Errorf("ERROR IN KAFKA MESSAGE OUT : %v", err)
+						}*/
+						o.output(topic, encodedMsg)
+					} /* else {
+						//log.Errorf("ERROR IN KAFKA MESSAGE OUT : %v", err)
 						errorChan <- err
-					}
+					}*/
 				case <-stoppubchan:
-					log.Info("stop request received ending publishing goroutine")
+					//log.Info("stop request received ending publishing goroutine")
 					shouldStop = true
 				default:
-					log.Debug("Timeout in kafka output worker go routine select")
+					//log.Info("Timeout in kafka output worker go routine select")
 					if shouldStop {
-						log.Debug("Stopping kafka output worker")
+						//log.Info("Stopping kafka output worker")
 						return
-					} else {
-						log.Debug("Not stopping kafka output worker")
-					}
+					} /*else {
+						log.Info("Not stopping kafka output worker")
+					}*/
 				}
 			}
-		}()
+		}(w)
 	}
+
 	go func() {
 		defer wg.Done()
 		defer o.Producer.Close()
 		for {
 			select {
+			/*
 			case e := <-o.deliveryChannel:
 				log.Info("GOT MESSAGE FROM DELIVERY CHANNEL")
 				m := e.(*kafka.Message)
@@ -180,6 +182,7 @@ func (o KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<-
 						*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)
 					atomic.AddInt64(&o.eventSentCount, 1)
 				}
+			*/
 			case cmsg := <-controlchan:
 				switch cmsg {
 				case syscall.SIGTERM, syscall.SIGINT:
@@ -213,19 +216,19 @@ func (o KafkaOutput) output(topic string, m string) {
 
 	err := errors.New("")
 	//IF we hit the kernel buffer limit, flush and keep going
-	log.Infof("TRING TO PRODUCE TO %s topic ", topic)
+	//log.Infof("TRING TO PRODUCE TO %s topic ", topic)
 	for err != nil {
 		err = o.Producer.Produce(&kafka.Message{
 			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 			Value:          []byte(m),
-		}, o.deliveryChannel)
+		}, nil)
 		if err != nil {
-			//log.Infof("%v ",err)
-			log.Debugf("got error at production...flushing")
+			//log.Errorf("%v ",err)
+			//log.Errorf("got error at production...flushing")
 			o.Producer.Flush(1)
 		}
 	}
-	log.Infof("Send out production ok")
+	//log.Infof("Send out production ok")
 }
 
 func GetOutputHandler(cfg map[interface{}]interface{}, encoder encoder.Encoder) (output.OutputHandler, error) {
