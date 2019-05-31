@@ -128,7 +128,7 @@ func (o KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<-
 			mypubwg.Add(1)
 			defer mypubwg.Done()
 			shouldStop := false
-			//topic := "TESTTOPIC" + string(wnum)
+			//topic := fmt.Sprintf("eventforwarder")
 			for {
 				select {
 				case message := <-messages:
@@ -223,7 +223,7 @@ func (o KafkaOutput) output(topic string, m string) {
 			Value:          []byte(m),
 		}, nil)
 		if err != nil {
-			//log.Errorf("%v ",err)
+			log.Errorf("%v ",err)
 			//log.Errorf("got error at production...flushing")
 			o.Producer.Flush(1)
 		}
