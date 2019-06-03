@@ -27,6 +27,26 @@ import (
 	"testing"
 )
 
+type bufwriter chan []byte
+
+func (bw bufwriter) Write(p []byte) (int, error) {
+    bw <- p
+    return len(p), nil
+}
+func NewBufwriter(n int) bufwriter {
+    w := make(bufwriter, n)
+    go func() {
+        for p := range w {
+            os.Stdout.Write(p)
+        }
+    }()
+    return w
+}
+
+func init() {
+	log.SetOutput(NewBufwriter(10000))
+}
+
 //var jsmp jsonmessageprocessor.JsonMessageProcessor = jsonmessageprocessor.JsonMessageProcessor{}
 var eventMap map[string]interface{} = map[string]interface{}{
 	"watchlist.#":                  true,

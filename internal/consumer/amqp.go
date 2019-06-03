@@ -18,6 +18,10 @@ import (
 	"sync"
 	"time"
 	"runtime"
+	"path"
+	"github.com/carbonblack/cb-event-forwarder/internal/sensor_events"
+	"crypto/md5"
+	"encoding/hex"
 )
 
 type AMQPConnection interface {
@@ -34,7 +38,6 @@ type AMQPChannel interface {
 	QueueDeclare(name string, durable, autoDelete, exclusive, noWait bool, args amqp.Table) (amqp.Queue, error)
 	Publish(exchange, key string, mandatory, immediate bool, msg amqp.Publishing) error
 }
-
 
 
 type WrappedAMQPConnection struct {
@@ -61,7 +64,7 @@ func (c *Consumer) reportError(d string, errmsg string, err error) {
 }
 
 func reportBundleDetails(routingKey string, body []byte, headers amqp.Table, debugFlag bool, debugStore string) {
-	/*log.Errorf("Error while processing message through routing key %s:", routingKey)
+	log.Errorf("Error while processing message through routing key %s:", routingKey)
 
 	var env *sensor_events.CbEnvironmentMsg
 	env, err := pbmessageprocessor.CreateEnvMessage(headers)
@@ -84,7 +87,7 @@ func reportBundleDetails(routingKey string, body []byte, headers amqp.Table, deb
 		fullFilePath = path.Join(debugStore, fmt.Sprintf("/event-forwarder-%X", h.Sum(nil)))
 		log.Debugf("Writing Bundle to disk: %s", fullFilePath)
 		ioutil.WriteFile(fullFilePath, body, 0444)
-	}*/
+	}
 }
 
 func (c *Consumer) Consume() {
@@ -93,12 +96,12 @@ func (c *Consumer) Consume() {
 	c.wg.Add(1)
 	go func() {
 		for {
-			log.Infof("Starting AMQP loop for %s on queue %s ", c.CbServerName, c.amqpURI)
+			log.Debugf("Starting AMQP loop for %s on queue %s ", c.CbServerName, c.amqpURI)
 			for {
 				err := c.Connect()
 				if err != nil {
 					log.Infof("Consumer couldn't connect - Will try again in 30 seconds")
-					log.Infof("%s %v", err, err)
+					log.Debugf("%s %v", err, err)
 					//time.Sleep(30 * time.Second)
 					select {
 					case <-c.Stopchan:
@@ -114,7 +117,7 @@ func (c *Consumer) Consume() {
 			}
 
 			numProcessors := runtime.NumCPU()
-			log.Infof("Starting %d message processors\n", numProcessors)
+			log.Debugf("Starting %d message processors\n", numProcessors)
 			var wg sync.WaitGroup
 			wg.Add(numProcessors)
 
@@ -142,7 +145,6 @@ func (c *Consumer) Consume() {
 				}()
 			}
 
-			log.Debugf("AMQP LOOP GOING TO SELECT stopchan is %s", &c.Stopchan)
 
 			for {
 				select {
@@ -200,7 +202,7 @@ func GetAMQPTLSConfig(tls_ca_cert, tls_client_cert, tls_client_key string, tls_i
 
 func NewConsumerFromConf(outputMessageFunc func(map[string]interface{}) error, serverName, consumerName string, consumerCfg map[interface{}]interface{}, debugFlag bool, debugStore string, wg sync.WaitGroup, dialer AMQPDialer) (*Consumer, error) {
 	var consumerTlsCfg *tls.Config = nil
-	log.Infof("New Consumer called with %s", consumerCfg)
+	log.Debugf("New Consumer called with %s", consumerCfg)
 	if temp, ok := consumerCfg["tls"]; ok {
 		log.Debugf("Trying to get tls config for amqp consumer...")
 		tlsCfg := temp.(map[interface{}]interface{})

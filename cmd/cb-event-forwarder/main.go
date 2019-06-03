@@ -19,7 +19,6 @@ import _ "net/http/pprof"
 var (
 	checkConfiguration = flag.Bool("check", false, "Check the configuration file and exit")
 	debug              = flag.Bool("debug", false, "Enable debugging mode")
-	inputFile          = flag.String("inputfile", "", "Enter json file to read for input")
 	httpserverport     = flag.Int("httpserverport", 33706, "Enter port for debugging")
 )
 
@@ -170,11 +169,7 @@ func main() {
 
 	sigs := make(chan os.Signal)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-	var inputfile *string = nil
-	if *inputFile != "" {
-		inputfile = &(*inputFile)
-	}
 
-	cbef.Go(sigs, inputfile)
+	cbef.Go(sigs)
 
 }

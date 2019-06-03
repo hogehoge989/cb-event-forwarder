@@ -1,7 +1,6 @@
 package cbeventforwarder
 
 import (
-	"encoding/json"
 	"expvar"
 	"fmt"
 	"github.com/carbonblack/cb-event-forwarder/internal/cbapi"
@@ -88,6 +87,7 @@ func (cbef *CbEventForwarder) OutputMessage(msg map[string]interface{}) error {
 	return nil
 }
 
+/*
 func (cbef *CbEventForwarder) InputFileProcessingLoop(inputFile string) <-chan error {
 	errChan := make(chan error)
 	go func() {
@@ -111,7 +111,7 @@ func (cbef *CbEventForwarder) InputFileProcessingLoop(inputFile string) <-chan e
 		}
 	}()
 	return errChan
-}
+}*/
 
 func (cbef *CbEventForwarder) startExpvarPublish() {
 	expvar.Publish(fmt.Sprintf("connection_status_%s", cbef.Name),
@@ -159,12 +159,6 @@ func (cbef *CbEventForwarder) StartOutput() error {
 	}
 	log.Infof("Successfully Initialized output: %s ", cbef.Output.String())
 
-	go func() {
-		select {
-		case outputError := <-cbef.OutputErrors:
-			log.Errorf("ERROR during output: %s", outputError.Error())
-		}
-	}()
 	return nil
 }
 
@@ -309,7 +303,7 @@ func GetCbEventForwarderFromCfg(config map[string]interface{}, dialer consumer.A
 // This controls the event forwarder, and should be used to cause it to gracefully exit/clear output buffers
 // The optional (pass null to opt-out) inputFile argument (usually from commandline) explicity lists an input jsonfile to grab
 // and use for (additional) input
-func (cbef *CbEventForwarder) Go(sigs chan os.Signal, inputFile *string) {
+func (cbef *CbEventForwarder) Go(sigs chan os.Signal) {
 	cbef.startExpvarPublish()
 
 	if err := cbef.StartOutput(); err != nil {
@@ -318,21 +312,11 @@ func (cbef *CbEventForwarder) Go(sigs chan os.Signal, inputFile *string) {
 
 	cbef.LaunchConsumer()
 
-	if inputFile != nil {
-		go func() {
-			errChan := cbef.InputFileProcessingLoop(*inputFile)
-			for {
-				select {
-				case err := <-errChan:
-					log.Errorf("Input file processing loop error: %v", err)
-				}
-			}
-		}()
-	}
-
 	for {
-		log.Info("cb-event forwarder running...")
+		log.Info("Forwarder running...")
 		select {
+		case outputError := <-cbef.OutputErrors:
+			log.Errorf("ERROR during output: %s", outputError.Error())
 		case sig := <-sigs:
 			log.Debugf("Signal handler got Signal %s ", sig)
 			switch sig {
@@ -349,10 +333,12 @@ func (cbef *CbEventForwarder) Go(sigs chan os.Signal, inputFile *string) {
 				cbef.OutputWaitGroup.Wait()
 				log.Debugf("Consumer workers & output finished gracefully - cb-event-forwarder service exiting")
 				log.Debugf("cb-event-forwarder graceful shutdown done...")
+				log.Infof("Shutdown complete...")
 				return
 			case syscall.SIGHUP: //propgate signals down to the outputs (HUP)
 				log.Debugf("Propogating  HUP signal to output control channel ")
 				cbef.Controlchan <- sig
+
 			}
 		}
 	}

@@ -1,6 +1,5 @@
-## Be careful the YAML is being used here
+## careful YAML is being used here
 # - is shorthand for array notation
-# whitespace can be used or you can breakout into JSON notation but the strings will need to be double-qouted
 
 input: 
     cb_server_name: cbresponseserver
@@ -41,7 +40,7 @@ input:
     #    api_token: <CBRTOKEN>
     #    proxy_url: <proxyurl>
 
-# The output stanza defines output - each key'd from a type of output
+#output stanza defines output types 
 # and providing an output destination, and format-type
 # the old output_types:
 # file,http,socket,splunk,http,syslog etc are still available and
@@ -108,39 +107,3 @@ output:
 #    format:
 #       type: template
 #        template: {{YamlFormat .}}
-
-#output plugins
-# The 4.0 event forwarder features modular and customizable outputs
-# called plugins
-# these output plugins can be written by users in golang
-# allowing the definition of new output-types necessitating upstream contributions
-# the output plugins can do more or less anything a 'real output' type can do
-# and can be used along side the usual output types from 3.x and prior
-
-# plugins/output/kafka
-# provides a new implentation of the kafka output as a plugin
-# this .so is loaded at runtime by the forwarder
-# to allow for output w/ kafka brokers
-# the plugin uses go-confluent-kafka which relies on the librdkafka.so
-# modular plugins allow the forwarder to support this great kafka library
-# w/o tying down non-kafka use cases to requiring librdkafka1.so
-#
-#
-# general structure of plugin conf
-#output:
-#    plugin:
-#        path: path/to/the.so
-#        plugin: nameoftheso
-#        config:
-#            ...config goes here if needed...
-#
-# the kafka plugin takes 3 arguments:
-# producer:
-#    bootstrap.servers: localhost:9092
-# this feeds parameters to the underlying kafka-producer,exactly like x.y=v
-# this is entirely optional, with reasonable defaults in place
-# but users can feel free to customize the producer config to their linking
-# the topic suffix parameter allows added a suffix to the produced topics
-# which are otherwised set to the 'type' of the outgoing message
-# topicSuffix: -mydesiredsuffix
-# and is in general a great example of how to write your own output plugin for the event-forwarder
