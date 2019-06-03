@@ -236,10 +236,11 @@ func GetOutputFromCfg(outputCfg map[interface{}] interface{}) (OutputHandler, er
 		}
 	case "kafka":
 		log.Debugf("Trying to load kafka output");
-		tempOH, err = NewKafkaOutputFromCfg(outputMap,myencoder)
+		ko, err := NewKafkaOutputFromCfg(outputMap,myencoder)
 		if err != nil {
 			log.Panicf("Couldn't create  Kafka output! %v",err)
 		}
+		tempOH = &ko;
 	/*case "plugin":
 		log.Debugf("plugin outputmap = %s", outputMap)
 		path, ok := outputMap["path"].(string)

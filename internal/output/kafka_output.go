@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"sync"
 	"syscall"
+	"sync/atomic"
 )
 
 // Producer implements a High-level Apache Kafka Producer instance ZE 2018
@@ -116,7 +117,7 @@ func NewKafkaOutputFromCfg(cfg map[interface{}]interface{}, encoder encoder.Enco
 	return ko, nil
 }
 
-func (o KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<- error, controlchan <-chan os.Signal, wg sync.WaitGroup) error {
+func (o  * KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<- error, controlchan <-chan os.Signal, wg sync.WaitGroup) error {
 
 	wg.Add(1)
 	stoppubchan := make(chan struct{}, 1)
@@ -168,7 +169,6 @@ func (o KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<-
 		defer o.Producer.Close()
 		for {
 			select {
-			/*
 			case e := <-o.deliveryChannel:
 				log.Info("GOT MESSAGE FROM DELIVERY CHANNEL")
 				m := e.(*kafka.Message)
@@ -181,7 +181,7 @@ func (o KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<-
 						*m.TopicPartition.Topic, m.TopicPartition.Partition, m.TopicPartition.Offset)
 					atomic.AddInt64(&o.eventSentCount, 1)
 				}
-			*/
+
 			case cmsg := <-controlchan:
 				switch cmsg {
 				case syscall.SIGTERM, syscall.SIGINT:
@@ -199,15 +199,15 @@ func (o KafkaOutput) Go(messages <-chan map[string]interface{}, errorChan chan<-
 	return nil
 }
 
-func (o KafkaOutput) Statistics() interface{} {
+func (o  * KafkaOutput) Statistics() interface{} {
 	return KafkaStatistics{DroppedEventCount: o.droppedEventCount, EventSentCount: o.eventSentCount}
 }
 
-func (o KafkaOutput) String() string {
+func (o * KafkaOutput) String() string {
 	return fmt.Sprintf("Brokers %s", o.brokers)
 }
 
-func (o KafkaOutput) Key() string {
+func (o * KafkaOutput) Key() string {
 	return fmt.Sprintf("brokers:%s", o.brokers)
 }
 
