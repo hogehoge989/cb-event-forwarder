@@ -12,7 +12,7 @@ import (
 	"github.com/carbonblack/cb-event-forwarder/internal/pbmessageprocessor"
 	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
-	"github.com/vaughan0/go-ini"
+	"github.com/go-ini/ini"
 	"io/ioutil"
 	"strings"
 	"sync"
@@ -583,15 +583,15 @@ func (c *Consumer) startExpvarPublish() {
 }
 
 func GetLocalRabbitMQCredentials() (username, password string, err error) {
-	input, err := ini.LoadFile("/etc/cb/cb.conf")
+	input, err := ini.Load("/etc/cb/cb.conf")
 	if err != nil {
 		return "error", "error", err
 	}
-	username, gotuser := input.Get("cb", "RabbitMQUser")
-	password, gotpass := input.Get("", "RabbitMQPassword")
+	username = input.Section("").Key("RabbitMQUser").Value()
+	password = input.Section("").Key("RabbitMQPassword").Value()
 
 	if len(username) == 0 || len(password) == 0 {
-		return username, password, errors.New(fmt.Sprintf("Could not get RabbitMQ credentials from /etc/cb/cb.conf %v %v",gotuser,gotpass))
+		return username, password, errors.New("Could not get RabbitMQ credentials from /etc/cb/cb.conf")
 	}
 	return username, password, nil
 }
