@@ -8,8 +8,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2/jwt"
 	"os"
-	"path"
-	"plugin"
 	"strconv"
 	"sync"
 	"time"
@@ -28,6 +26,7 @@ type OutputHandler interface {
 }
 
 // Trty to load an pluginName.so at pluginPath w/ cfg configuration and e , the Encoder to use to format output.
+/*
 func loadOutputFromPlugin(pluginPath string, pluginName string, cfg map[interface{}]interface{}, e encoder.Encoder) (OutputHandler, error) {
 	log.Infof("loadOutputFromPlugin: Trying to load plugin %s at %s", pluginName, pluginPath)
 	plug, err := plugin.Open(path.Join(pluginPath, pluginName+".so"))
@@ -40,7 +39,7 @@ func loadOutputFromPlugin(pluginPath string, pluginName string, cfg map[interfac
 	}
 	return pluginHandlerFuncRaw.(func(map[interface{}]interface{}, encoder.Encoder) (OutputHandler, error))(cfg, e)
 }
-
+*/
 /*
 Process the output:
                   -type-of-input:
@@ -233,9 +232,15 @@ func GetOutputFromCfg(outputCfg map[interface{}] interface{}) (OutputHandler, er
 			}
 			tempOH = &bo
 		} else {
-			log.Panicf("Coudln't create Bundled output for s3")
+			log.Panicf("Coudln't create Bundled output for s3 %v",err)
 		}
-	case "plugin":
+	case "kafka":
+		log.Debugf("Trying to load kafka output");
+		tempOH, err = NewKafkaOutputFromCfg(outputMap,myencoder)
+		if err != nil {
+			log.Panicf("Couldn't create  Kafka output! %v",err)
+		}
+	/*case "plugin":
 		log.Debugf("plugin outputmap = %s", outputMap)
 		path, ok := outputMap["path"].(string)
 		if !ok {
@@ -260,7 +265,7 @@ func GetOutputFromCfg(outputCfg map[interface{}] interface{}) (OutputHandler, er
 			}
 		}
 		ohp, _ := loadOutputFromPlugin(path, name, cfg, myencoder)
-		tempOH = ohp
+		tempOH = ohp */
 	default:
 		return tempOH, errors.New("No output detected...check documentation and configuration")
 	}

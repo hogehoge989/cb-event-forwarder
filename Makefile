@@ -20,16 +20,6 @@ endif
 go-fmt:
 	go fmt github.com/carbonblack/cb-event-forwarder/...
 
-build-plugins: librdkafka
-	go build -buildmode=plugin -tags static -o plugins/output/kafka/kafka_output.so plugins/output/kafka/kafka_output.go
-	go build -buildmode=plugin -o plugins/encoder/basic/basic_encoder.so plugins/encoder/basic/basic_encoder.go
-	go build -buildmode=plugin -o plugins/filter/basic/basic_filter.so plugins/filter/basic/basic_filter.go
-	go build -buildmode=plugin -o plugins/output/hdfs/hdfs_output.so plugins/output/hdfs/hdfs_output.go
-	cp plugins/output/kafka/kafka_output.so .
-	cp plugins/output/hdfs/hdfs_output.so .
-	cp plugins/encoder/basic/basic_encoder.so basic_encoder.so
-	cp plugins/filter/basic/basic_filter.so basic_filter.so
-
 build: librdkafka
 	go get -u github.com/gogo/protobuf/protoc-gen-gogofast
 	protoc --gogofast_out=.  ./internal/sensor_events/sensor_events.proto

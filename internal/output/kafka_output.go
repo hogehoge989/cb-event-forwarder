@@ -1,10 +1,9 @@
-package main
+package output
 
 import (
 	"errors"
 	"fmt"
 	"github.com/carbonblack/cb-event-forwarder/internal/encoder"
-	"github.com/carbonblack/cb-event-forwarder/internal/output"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	log "github.com/sirupsen/logrus"
 	"os"
@@ -231,7 +230,7 @@ func (o KafkaOutput) output(topic string, m string) {
 	//log.Infof("Send out production ok")
 }
 
-func GetOutputHandler(cfg map[interface{}]interface{}, encoder encoder.Encoder) (output.OutputHandler, error) {
+func GetOutputHandler(cfg map[interface{}]interface{}, encoder encoder.Encoder) (OutputHandler, error) {
 	ko, err := NewKafkaOutputFromCfg(cfg, encoder)
 	return &ko, err
 }
