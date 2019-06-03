@@ -587,11 +587,11 @@ func GetLocalRabbitMQCredentials() (username, password string, err error) {
 	if err != nil {
 		return "error", "error", err
 	}
-	username, _ = input.Get("cb", "RabbitMQUser")
-	password, _ = input.Get("", "RabbitMQPassword")
+	username, err = input.Get("cb", "RabbitMQUser")
+	password, err = input.Get("", "RabbitMQPassword")
 
 	if len(username) == 0 || len(password) == 0 {
-		return username, password, errors.New("Could not get RabbitMQ credentials from /etc/cb/cb.conf")
+		return username, password, errors.New("Could not get RabbitMQ credentials from /etc/cb/cb.conf %v %v",username,password)
 	}
 	return username, password, nil
 }
