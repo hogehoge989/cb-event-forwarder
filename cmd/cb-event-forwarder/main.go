@@ -3,7 +3,6 @@ package main
 import (
 	"expvar"
 	"flag"
-	"fmt"
 	"github.com/carbonblack/cb-event-forwarder/internal/cbeventforwarder"
 	conf "github.com/carbonblack/cb-event-forwarder/internal/config"
 	"github.com/carbonblack/cb-event-forwarder/internal/consumer"
@@ -63,8 +62,10 @@ func main() {
 		exportedVersion.Set(version + " (debugging on)")
 		log.Debugf("*** Debugging enabled: messages may be sent via http://%s:%d/debug/sendmessage/<cbefinputname> ***",
 			hostname, *httpserverport)
+		log.SetLevel(log.DebugLevel)
 	} else {
 		exportedVersion.Set(version)
+		log.SetLevel(log.InfoLevel)
 	}
 	expvar.Publish("debug", expvar.Func(func() interface{} {
 		return *debug
@@ -124,10 +125,9 @@ func main() {
 		os.Exit(0)
 	}
 
-	log.SetLevel(log.InfoLevel)
+
 	if *debug {
-		log.Infof("Setting log level to debug")
-		log.SetLevel(log.DebugLevel)
+
 		 //TODO FIX DEBUG EXPVAR HANDLING HERE
 		 /*http.HandleFunc(fmt.Sprintf("/debug/sendmessage"), func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == "POST" {

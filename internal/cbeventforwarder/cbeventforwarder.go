@@ -181,6 +181,7 @@ func GetCbEventForwarderFromCfg(config map[string]interface{}, dialer consumer.A
 	if t, ok := config["debug"]; ok {
 		debugFlag = t.(bool)
 	}
+
 	if debugFlag {
 		log.SetLevel(log.DebugLevel)
 		log.Debugf("Set log level to debug")
