@@ -95,9 +95,13 @@ func main() {
 	config, err := conf.ParseConfig(configLocation)
 	if err != nil {
 		log.Fatal(err)
+	} else {
+		log.Debugf("Parsed configuration ok...")
 	}
 
 	cbef := cbeventforwarder.GetCbEventForwarderFromCfg(config, consumer.StreadwayAMQPDialer{})
+
+	log.Debugf("Created cb-event-forwarder ok")
 
 	addrs, err := net.InterfaceAddrs()
 
@@ -162,7 +166,7 @@ func main() {
 		}) */
 	}
 
-	go http.ListenAndServe(fmt.Sprintf(":%d", *httpserverport), nil)
+	//go http.ListenAndServe(fmt.Sprintf(":%d", *httpserverport), nil)
 
 	sigs := make(chan os.Signal)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
