@@ -13,9 +13,9 @@ import (
 )
 
 type UploadStatus struct {
-	fileName string
-	result   error
-	status   int
+	fileName    string
+	resultError error
+	status      int
 }
 
 type BundledOutput struct {
@@ -76,7 +76,7 @@ func (o *BundledOutput) uploadone(fileName string) error {
 	fp, err := os.OpenFile(fileName, os.O_RDONLY, 0644)
 
 	if err != nil {
-		o.fileResultChan <- UploadStatus{fileName: fileName, result: err}
+		o.fileResultChan <- UploadStatus{fileName: fileName, resultError: err}
 		return err
 	}
 
@@ -85,14 +85,14 @@ func (o *BundledOutput) uploadone(fileName string) error {
 
 	fileInfo, err := fp.Stat()
 	if err != nil {
-		o.fileResultChan <- UploadStatus{fileName: fileName, result: err}
+		o.fileResultChan <- UploadStatus{fileName: fileName, resultError: err}
 		return err
 	}
 
 	if fileInfo.Size() > 0 || config.UploadEmptyFiles {
 		// only upload if the file size is greater than zero
 		uploadStatus := o.behavior.Upload(fileName, fp)
-		err = uploadStatus.result
+		err = uploadStatus.resultError
 		o.fileResultChan <- uploadStatus
 		return err
 	}
@@ -249,7 +249,11 @@ func (o *BundledOutput) Go(messages <-chan string, errorChan chan<- error) error
 		defer signal.Stop(hup)
 		defer signal.Stop(term)
 
+
 		for {
+
+
+
 			select {
 			case message := <-messages:
 				if err := o.output(message); err != nil {
@@ -264,7 +268,6 @@ func (o *BundledOutput) Go(messages <-chan string, errorChan chan<- error) error
 						return
 					}
 				}
-
 				if len(o.filesToUpload) > 0 {
 					var fn string
 					fn, o.filesToUpload = o.filesToUpload[0], o.filesToUpload[1:]
@@ -272,9 +275,9 @@ func (o *BundledOutput) Go(messages <-chan string, errorChan chan<- error) error
 				}
 
 			case fileResult := <-o.fileResultChan:
-				if fileResult.result != nil {
+				if fileResult.resultError != nil {
 					o.uploadErrors++
-					o.lastUploadError = fileResult.result.Error()
+					o.lastUploadError = fileResult.resultError.Error()
 					o.lastUploadErrorTime = time.Now()
 					//Handle 400s - lets stop processing the file and move it to debug zone
 					if fileResult.status != 400 {
@@ -288,7 +291,7 @@ func (o *BundledOutput) Go(messages <-chan string, errorChan chan<- error) error
 						MoveFileToDebug(fileResult.fileName)
 					}
 
-					log.Infof("Error uploading file %s: %s", fileResult.fileName, fileResult.result)
+					log.Infof("Error uploading file %s: %s", fileResult.fileName, fileResult.resultError)
 				} else {
 					o.successfulUploads++
 					o.lastSuccessfulUpload = time.Now()
