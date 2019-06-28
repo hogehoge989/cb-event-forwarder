@@ -13,7 +13,7 @@ import (
 	"github.com/carbonblack/cb-event-forwarder/internal/sensor_events"
 	"github.com/cyberdelia/go-metrics-graphite"
 	"github.com/rcrowley/go-metrics"
-    "github.com/rcrowley/go-metrics/exp"
+	"github.com/rcrowley/go-metrics/exp"
 	log "github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	"io/ioutil"
@@ -440,7 +440,6 @@ func startOutputs() error {
 	return outputHandler.Go(results, outputErrors)
 }
 
-
 func main() {
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -566,14 +565,14 @@ func main() {
 		queueName = config.AMQPQueueName
 	}
 
-    go func(consumerNumber int) {
-        log.Infof("Starting AMQP loop %d to %s on queue %s", consumerNumber, config.AMQPURL(), queueName)
-        for {
-            err := messageProcessingLoop(config.AMQPURL(), queueName, fmt.Sprintf("go-event-consumer-%d", consumerNumber))
-            log.Infof("AMQP loop %d exited: %s. Sleeping for 30 seconds then retrying.", consumerNumber, err)
-            time.Sleep(30 * time.Second)
-        }
-    }(1)
+	go func(consumerNumber int) {
+		log.Infof("Starting AMQP loop %d to %s on queue %s", consumerNumber, config.AMQPURL(), queueName)
+		for {
+			err := messageProcessingLoop(config.AMQPURL(), queueName, fmt.Sprintf("go-event-consumer-%d", consumerNumber))
+			log.Infof("AMQP loop %d exited: %s. Sleeping for 30 seconds then retrying.", consumerNumber, err)
+			time.Sleep(30 * time.Second)
+		}
+	}(1)
 
 	if config.AuditLog == true {
 		log.Info("starting log file processing loop")
@@ -600,7 +599,7 @@ func main() {
 		go graphite.Graphite(metrics.DefaultRegistry, 1*time.Second, "cb.eventforwarder", addr)
 	}
 
-    exp.Exp(metrics.DefaultRegistry)
+	exp.Exp(metrics.DefaultRegistry)
 
 	for {
 		time.Sleep(30 * time.Second)

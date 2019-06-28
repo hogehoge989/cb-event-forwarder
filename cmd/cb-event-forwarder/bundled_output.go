@@ -65,33 +65,46 @@ type BundleBehavior interface {
 }
 
 func (o *BundledOutput) uploadOne(fileName string) {
+	err := o.uploadone(fileName)
+	//only remove the file if there was no error during upload
+	if err == nil {
+		o.removeone(fileName)
+	}
+}
+
+func (o *BundledOutput) uploadone(fileName string) error {
 	fp, err := os.OpenFile(fileName, os.O_RDONLY, 0644)
+
 	if err != nil {
 		o.fileResultChan <- UploadStatus{fileName: fileName, result: err}
-		return
+		return err
 	}
+
+	//will only happen if we didn't get an error opening the file
+	defer fp.Close()
 
 	fileInfo, err := fp.Stat()
 	if err != nil {
 		o.fileResultChan <- UploadStatus{fileName: fileName, result: err}
-		fp.Close()
-		return
+		return err
 	}
+
 	if fileInfo.Size() > 0 || config.UploadEmptyFiles {
 		// only upload if the file size is greater than zero
 		uploadStatus := o.behavior.Upload(fileName, fp)
 		err = uploadStatus.result
 		o.fileResultChan <- uploadStatus
+		return err
 	}
 
-	fp.Close()
+	return nil
+}
 
-	if err == nil {
-		// only remove the old file if there was no error
-		err = os.Remove(fileName)
-		if err != nil {
-			log.Infof("error removing %s: %s", fileName, err.Error())
-		}
+func (o *BundledOutput) removeOne(fn string) {
+	// only remove the old file if there was no error
+	err = os.Remove(fileName)
+	if err != nil {
+		log.Infof("error removing %s: %s", fileName, err.Error())
 	}
 }
 
